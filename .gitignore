@@ -1,5 +1,5 @@
 *
 
 !.gitignore
-!filewatcher.c
+!filewatch.c
 !Makefile

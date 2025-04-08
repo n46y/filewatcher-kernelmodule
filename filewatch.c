@@ -12,7 +12,7 @@
 #include <linux/path.h>
 #include <linux/namei.h>
 
-#define CHRDEV_NAME "hello_chrdev"
+#define CHRDEV_NAME "filewatch_chrdev"
 #define MAX_PATHS 8
 #define MAX_PATH_LEN 128
 
@@ -38,7 +38,7 @@ static int get_last_mod(const struct path* path, struct timespec64 *ts) {
     
     ret = vfs_getattr(path, &stat, STATX_MTIME, AT_STATX_FORCE_SYNC);
     if (ret) {
-        pr_err("Failed to get file attributes: %d\n", ret);
+        pr_err("filewatch -> Failed to get file attributes: %d\n", ret);
         return -EIO;
     }
 
@@ -55,7 +55,7 @@ static int add_path(char* path_str) {
 
     ret = kern_path(path_str, LOOKUP_FOLLOW, &path);
     if (ret) {
-        pr_err("hello -> Failed to get path for %s: %d\n", path_str, ret);
+        pr_err("filewatch -> Failed to get path for %s: %d\n", path_str, ret);
         return -EIO;  // Input/output error
     }
 
@@ -69,13 +69,13 @@ static int add_path(char* path_str) {
             strncpy(watch_list[i].str_path, path_str, MAX_PATH_LEN);
             watch_list[i].last_mod = ts;
             watch_list[i].used = true;
-            pr_info("hello -> ADDED PATH: %s\n", watch_list[i].str_path);
+            pr_info("filewatch -> ADDED PATH: %s\n", watch_list[i].str_path);
             break;
         }
     }
 
     if (i >= (sizeof(watch_list) / sizeof(struct watch_path))) {
-        pr_err("hello -> Watch list full\n");
+        pr_err("filewatch -> Watch list full\n");
         return -ENOSPC;
     }
 
@@ -92,8 +92,8 @@ static ssize_t hello_read (struct file *file, char __user *user, size_t size, lo
     int o;
     int ret;
 
-    pr_info("hello -> Write was called on the chardev\n");
-    pr_info("hello -> Want to write: %ld, copying: %d, offset: %lld\n", size, to_copy, *offset);
+    pr_info("filewatch -> Write was called on the chardev\n");
+    pr_info("filewatch -> Want to write: %ld, copying: %d, offset: %lld\n", size, to_copy, *offset);
 
 
 
@@ -102,7 +102,7 @@ static ssize_t hello_read (struct file *file, char __user *user, size_t size, lo
         if (watch_list[i].used) {
             ret = kern_path(watch_list[i].str_path, LOOKUP_FOLLOW, &path);
             if (ret) {
-                pr_err("hello -> Failed to get path for %s: %d\n", watch_list[i].str_path, ret);
+                pr_err("filewatch -> Failed to get path for %s: %d\n", watch_list[i].str_path, ret);
                 return 0;  // Input/output error
             }
 
@@ -122,7 +122,7 @@ static ssize_t hello_read (struct file *file, char __user *user, size_t size, lo
 
     delta = to_copy - not_copied;
     if(not_copied)
-        pr_warn("hello -> could only write %d bytes\n", delta);
+        pr_warn("filewatch -> could only write %d bytes\n", delta);
 
     *offset += delta;
 
@@ -132,8 +132,8 @@ static ssize_t hello_read (struct file *file, char __user *user, size_t size, lo
 // write function for the fops struct (user -> kernel)
 static ssize_t hello_write (struct file *file, const char __user *user, size_t size, loff_t *offset){
     int not_copied, delta, to_copy = (size + *offset) < sizeof(buff) ? size : (sizeof(buff) - *offset);
-    pr_info("hello -> Write was called on the chardev\n");
-    pr_info("hello -> Want to write: %ld, copying: %d, offset: %lld\n", size, to_copy, *offset);
+    pr_info("filewatch -> Write was called on the chardev\n");
+    pr_info("filewatch -> Want to write: %ld, copying: %d, offset: %lld\n", size, to_copy, *offset);
 
     if (*offset > sizeof(buff)) 
         return 0;
@@ -141,15 +141,15 @@ static ssize_t hello_write (struct file *file, const char __user *user, size_t s
     not_copied = copy_from_user(&buff[*offset], user, to_copy);
     delta = to_copy - not_copied;
     if(not_copied)
-        pr_warn("hello -> could only write %d bytes\n", delta);
+        pr_warn("filewatch -> could only write %d bytes\n", delta);
 
     if(!strncmp(&buff[*offset], "ADD:", 4)) {
-        pr_info("hello -> ADD method called\n");
+        pr_info("filewatch -> ADD method called\n");
         add_path(&buff[*offset + 4]);
     } else if (!strncmp(&buff[*offset], "RMV:", 4)) {
-        pr_info("hello -> RMV method called\n");
+        pr_info("filewatch -> RMV method called\n");
     } else {
-        pr_err("hello -> unknown method!\n");
+        pr_err("filewatch -> unknown method!\n");
     }
 
     *offset += delta;
@@ -159,14 +159,14 @@ static ssize_t hello_write (struct file *file, const char __user *user, size_t s
 
 // open function for the fops struct
 static int hello_open (struct inode *inode, struct file *file) {
-    pr_info("hello -> open chrdev: major: %d, minor: %d\n", imajor(inode), iminor(inode));
+    pr_info("filewatch -> open chrdev: major: %d, minor: %d\n", imajor(inode), iminor(inode));
     try_module_get(THIS_MODULE);
     return 0;
 }
 
 // release function for the fops struct
 static int hello_release (struct inode *, struct file *) {
-    pr_info("hello -> release chrdev\n");
+    pr_info("filewatch -> release chrdev\n");
     module_put(THIS_MODULE);
     return 0;
 }
@@ -185,7 +185,7 @@ static struct file_operations fops = {
 static int __init hello_init(void) {
     major = register_chrdev(0, CHRDEV_NAME, &fops);
     if(major < 0) {
-        pr_err("hello -> unable to register major number QwQ\n");
+        pr_err("filewatch -> unable to register major number QwQ\n");
         return major;
 
     }
@@ -205,7 +205,7 @@ static int __init hello_init(void) {
         return -ENODEV;
     };
 
-    pr_err("hello -> module init :3 major dev number: %d\n", major);
+    pr_err("filewatch -> module init :3 major dev number: %d\n", major);
     return 0;
 }
 
@@ -214,7 +214,7 @@ static void __exit hello_exit(void) {
     device_destroy(cls, MKDEV(major, 0));
     class_destroy(cls);
     unregister_chrdev(major, CHRDEV_NAME);
-    pr_info("hello -> module exit QwQ\n");
+    pr_info("filewatch -> module exit QwQ\n");
 }
 
 // specifying the init and exit functions
