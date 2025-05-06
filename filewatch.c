@@ -30,7 +30,7 @@ static struct class* cls; // IDK what class is for
 
 
 static char buff[MAX_PATHS * 128]; // chrdev buffer
-
+ 
 
 static int get_last_mod(const struct path* path, struct timespec64 *ts) {
     struct kstat stat;
@@ -43,6 +43,28 @@ static int get_last_mod(const struct path* path, struct timespec64 *ts) {
     }
 
     *ts = stat.mtime;
+
+    return 0;
+}
+
+// remove path from watchlist
+static int remove_path(char* path_str) {
+    int i;
+    for(i = 0; i < MAX_PATHS; ++i) {
+        if(!strncmp(path_str, watch_list[i].str_path, strnlen(watch_list[i].str_path, MAX_PATH_LEN))){
+            if(watch_list[i].used) {
+                watch_list[i].used = false;
+                pr_info("filewatch -> path found and removed");
+                break;
+            } else {
+                pr_info("filewatch -> path found but it was already removed");
+            }
+        }
+    }
+
+    if(i == MAX_PATHS) {
+        pr_err("filewatch -> path not found");
+    }
 
     return 0;
 }
@@ -97,6 +119,7 @@ static ssize_t hello_read (struct file *file, char __user *user, size_t size, lo
 
 
 
+    memset(buff, 0, sizeof(buff));
     o = 0;
     for(i = 0; i < (sizeof(watch_list) / sizeof(struct watch_path)); ++i) {
         if (watch_list[i].used) {
@@ -128,6 +151,7 @@ static ssize_t hello_read (struct file *file, char __user *user, size_t size, lo
 
     return delta;
 }
+// little change
 
 // write function for the fops struct (user -> kernel)
 static ssize_t hello_write (struct file *file, const char __user *user, size_t size, loff_t *offset){
@@ -137,6 +161,8 @@ static ssize_t hello_write (struct file *file, const char __user *user, size_t s
 
     if (*offset > sizeof(buff)) 
         return 0;
+
+    memset(buff, 0, sizeof(buff));
 
     not_copied = copy_from_user(&buff[*offset], user, to_copy);
     delta = to_copy - not_copied;
@@ -148,6 +174,7 @@ static ssize_t hello_write (struct file *file, const char __user *user, size_t s
         add_path(&buff[*offset + 4]);
     } else if (!strncmp(&buff[*offset], "RMV:", 4)) {
         pr_info("filewatch -> RMV method called\n");
+        remove_path(&buff[*offset + 4]);
     } else {
         pr_err("filewatch -> unknown method!\n");
     }
@@ -171,8 +198,6 @@ static int hello_release (struct inode *, struct file *) {
     return 0;
 }
 
-// here you can specify your chrdev's supported file operations
-// https://elixir.bootlin.com/linux/v6.13.7/source/include/linux/fs.h#L2071
 static struct file_operations fops = {
     .owner = THIS_MODULE,
     .write = hello_write,
@@ -181,29 +206,37 @@ static struct file_operations fops = {
     .release = hello_release
 }; 
 
+// set permissions callback
+static char *devnode_func(const struct device *dev, umode_t *mode) {
+    if (mode) {
+        *mode = 0666;
+    }
+    return NULL;
+}
+
 // init callback
 static int __init hello_init(void) {
     major = register_chrdev(0, CHRDEV_NAME, &fops);
-    if(major < 0) {
+    if (major < 0) {
         pr_err("filewatch -> unable to register major number QwQ\n");
         return major;
-
     }
 
-    cls = class_create(CHRDEV_NAME); // IDK what class is for
+    cls = class_create(CHRDEV_NAME);
     if (IS_ERR(cls)) {
         pr_err("Failed to create class\n");
         unregister_chrdev(major, CHRDEV_NAME);
         return PTR_ERR(cls);
     }
 
-    // here we create a "file" for the chrdev in /dev
-    if(!device_create(cls, NULL, MKDEV(major, 0), NULL, CHRDEV_NAME)) {
+    cls->devnode = devnode_func;  // set permissions
+
+    if (!device_create(cls, NULL, MKDEV(major, 0), NULL, CHRDEV_NAME)) {
         pr_err("Failed to create device node\n");
         class_destroy(cls);
         unregister_chrdev(major, CHRDEV_NAME);
         return -ENODEV;
-    };
+    }
 
     pr_err("filewatch -> module init :3 major dev number: %d\n", major);
     return 0;
