@@ -56,8 +56,6 @@ static int remove_path(char* path_str) {
                 watch_list[i].used = false;
                 pr_info("filewatch -> path found and removed");
                 break;
-            } else {
-                pr_info("filewatch -> path found but it was already removed");
             }
         }
     }
