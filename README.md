@@ -1,21 +1,21 @@
 # Filewatcher Kernel Module
-## Leiras
-Ez egy egyszeru kernelmodul, amivel egy character device-on keresztul kommunikalhatunk.
-Celja, hogy a megadott eleresi utvonalu file-okat figyeli es ha lekerdezzuk, kiirja hogy az utolso lekerdezes ota volt a valtozas a file tartalmaban.
+## Leírás
+Ez egy egyszerű kernelmodul, amivel egy character device-on keresztül kommunikálhatunk.
+Célja, hogy a megadott elérési utvonalú file-okat figyeli és ha lekérdezzük, kiírja hogy az utolsó lekérdezés óta volt-e változás a file tartalmában.
 
-## Mukodes
-Ez a modul letrehoz egy chardev-et amibe iraskor megkeressuk hogy letezik-e az adott file es ha igen hozzaadja egy listahoz, vagy ha mas parancsot adunk meg akkor eltavolitja onnan. Ha pedig olvasunk a filebol akkor lekerdezi a `vfs_getattr` metodus segitsegevel az utolso modositast es ha az elter az utolso eltarolt ertektol akkor kiirja hogy mododult a file egyebkent oedig hogy nem.
+## Mőködés
+Ez a modul létrehoz egy chardev-et, amibe íráskor megkeressük, hogy létezik-e az adott file és, ha igen hozzáadja egy listához, vagy ha más parancsot adunk meg, akkor eltávolítja onnan. Ha pedig olvasunk a file-ból, akkor lekérdezi a `vfs_getattr` metódus segítségével az utolsó módosítást és ha az eltér az utolsó eltárolt értéktől, akkor kiírja, hogy módosult a file, egyébként pedig, hogy nem.
 
 ## Build
-`make all` utan a C file melle fordul a tobbi file. (Az en kernel releasem: `6.14.2-arch1-1`)
+`make all` után a C file mellé fordul a többi file. (Az én kernel releasem: `6.14.2-arch1-1`)
 
-## Hasznalat
-- `sudo insmod filewatch.ko` utan letrejon egy `/dev/filewatch_chrdev` chardev, ezzel lehet kommunikalni
-- `printf "ADD:/full/path/to/your/file" > /dev/filewatch_chrdev` a teljes, abszolut eleresi ut megadasa `ADD:` elotaggal hozzaad egy file-t a watchlisthez (amiben max 8 elem lehet)
-- `printf "RMV:/full/path/to/your/file" > /dev/filewatch_chrdev` a teljes, abszolut eleresi ut megadasa `RMV:` elotaggal eltavolit egy file-t a watchlistbol (ha az letezik benne)
-- `cat /dev/filewatch_chrdev` soronk kiirja a watchlisten levo file-okrol, hogy az utolso lekerdezes ota volt e bennuk modositas (hozzaadas utan ha nem modositunk akkor elso lekerdezesnel nem szamit modositottnak)
-- `sudo rmmod filewatch` a module eltavolitasa utan a chardev file is torlodik.
+## Használat
+- `sudo insmod filewatch.ko` után létrejön egy `/dev/filewatch_chrdev` chardev, ezzel lehet kommunikalni
+- `printf "ADD:/full/path/to/your/file" > /dev/filewatch_chrdev` a teljes, abszolút elérési út megadása `ADD:` előtaggal hozzáad egy file-t a watchlisthez (amiben max 8 elem lehet)
+- `printf "RMV:/full/path/to/your/file" > /dev/filewatch_chrdev` a teljes, abszolút elérési út megadása `RMV:` előtaggal eltávolít egy file-t a watchlist-ből (ha az létezik benne)
+- `cat /dev/filewatch_chrdev` soronként kiírja a watchlist-en lévő file-okról, hogy az utolsó lekérdezés óta volt-e bennük módosítás (hozzáadas után, ha nem módosítunk, akkor első lekérdezésnél nem szamít módosítottnak)
+- `sudo rmmod filewatch` a module eltávolítása után a chardev file is törlődik.
 
 
-### Nepun kod:
+### Nepun kód:
 C06R3L
